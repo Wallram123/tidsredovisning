@@ -39,6 +39,22 @@ function activities(Route $route, array $postData): Response {
  * @return Response
  */
 function hamtaAllaAktiviteter(): Response {
+    // koppla mot databas
+    $db= connectDb();
+
+    //hämta alla aktiviteter
+    $result = $db->query("SELECT id, namn FROM aktiviteter");
+
+    // skapa returvärde
+    $retur=[];
+    foreach ($result as $item){
+        $post=new stdClass();
+        $post->id=$item['id'];
+        $post->namn=$item['namn'];
+        $retur[]=$post;
+    }
+    // skicka svar
+    return new Response($retur);
 }
 
 /**

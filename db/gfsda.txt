@@ -1,0 +1,6 @@
+Executed SQL Statement : insert into `crud`.`citat` (`citat`, `namnet till citat`)
+	values
+	('Hej', 'Alrberti');
+ 
+Error Number : 1054 
+Error Message: Unknown column 'citat' in 'field list' 

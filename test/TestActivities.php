@@ -179,10 +179,111 @@ function test_SparaNyAktivitet(): string {
 function test_UppdateraAktivitet(): string {
     $retur = "<h2>test_UppdateraAktivitet</h2>";
 
+
     try {
-        $retur .= "<p class='error'>Inga tester implementerade</p>";
+        //koppla databas
+        $db = connectDb();
+        //starta transaktion
+        $db->beginTransaction();
+
+    // Misslyckades med att upddatera id=-1
+    $svar= UppdateraAktivitet("-1", "Aktivitet");
+    if($svar->getStatus()===400) {
+        $retur .="<p class='ok'>Uppdatea aktivitet med id=-1 misslyckades, som förväntat</p>";
+    }else{
+    $retur .="<p class='error'>Uppdatea aktivitet med id=-1 misslyckades, status " . $svar->getStatus()
+    . "istället för förväntad 400</p>";
+    }
+
+    // Misslyckades med att uppdatera id=0
+    $svar= UppdateraAktivitet("0", "Aktivitet");
+    if($svar->getStatus()===400) {
+        $retur .="<p class='ok'>Uppdatea aktivitet med id=0 misslyckades, som förväntat</p>";
+    }else{
+    $retur .="<p class='error'>Uppdatea aktivitet med id=0 misslyckades, status " . $svar->getStatus()
+    . "istället för förväntad 400</p>";
+    }
+
+    // Misslyckades med att uppdatera id=3.14
+    $svar= UppdateraAktivitet("3.14", "Aktivitet");
+    if($svar->getStatus()===400) {
+        $retur .="<p class='ok'>Uppdatea aktivitet med id=3.14 misslyckades, som förväntat</p>";
+    }else{
+    $retur .="<p class='error'>Uppdatea aktivitet med id=3.14 misslyckades, status " . $svar->getStatus()
+    . "istället för förväntad 400</p>";
+    }
+
+    // Misslyckades med att uppdatera aktivitet=''
+    $svar= UppdateraAktivitet("3", "");
+    if($svar->getStatus()===400) {
+        $retur .="<p class='ok'>Uppdatea aktivitet med tom aktivitet misslyckades, som förväntat</p>";
+    }else{
+    $retur .="<p class='error'>Uppdatea aktivitet med id=-1 misslyckades, status " . $svar->getStatus()
+    . "istället för förväntad 400</p>";
+    }
+
+    $aktivitet="aktivitet" . time();
+    $svar= sparaNyAktivitet($aktivitet);
+    if($svar->getStatus()===200) {
+        $nyttId=$svar->getContent()->id;
+    } else {
+        throw new Exception("spara aktivitet för uppdatering misslyckades");
+    }
+
+    $svar= uppdateraAktivitet("$nyttId", $aktivitet);
+    if($svar->getStatus()===200 && $svar->getContent()->result===false) {
+        $retur .="<p class='ok'> uppdatera aktivitet med samma information misslyckades, som förväntat</p>";
+    } else {
+        $retur .="<p class='error'>uppdatera aktivitet med samma information misslyckades<br>"
+        . "status:" . $svar->getStatus() . " returneras med följande innerhåll:<br>"
+        . print_r($svar->getContent(), true) ."</br>";
+    }
+    
+
+     //lyckades med att upåpdatera aktivitet 
+    $svar=UppdateraAktivitet("$nyttId", "NY " . $aktivitet);
+    if($svar->getStatus()===200 && $svar->getContent()->result===true) {
+    $retur .="<p class='ok'>uppdatera aktivitet lyckades</p>";
+    }else{
+    $retur .="<p class='error'>uppdatera aktivitet misslyckades<br>"
+    . "status:" . $svar->getStatus() . " returneras med följande innerhåll:<br>"
+    . print_r($svar->getContent(), true) ."</br>";
+    }
+
+    //misslyckas med att uppdatera aktivitet som inte finns
+    $nyttId++;
+    $svar=UppdateraAktivitet("$nyttId", "What ever");
+    if($svar->getStatus()===200 && $svar->getContent()->result===false) {
+    $retur .="<p class='ok'>uppdatera aktivitet misslyckades, som förväntat</p>";
+    }else{
+    $retur .="<p class='error'>uppdatera aktivitet misslyckades<br>"
+    . "status:" . $svar->getStatus() . " returneras med följande innerhåll:<br>"
+    . print_r($svar->getContent(), false) ."</br>";
+    }
+
+    //misslyckas med att uppdatera till en aktivitet som finns
+    $svar= sparaNyAktivitet($aktivitet);
+    if($svar->getStatus()===200) {
+        $nyttId=$svar->getContent()->id;
+    } else {
+        throw new Exception("spara aktivitet för uppdatering misslyckades");
+    }
+    $svar=UppdateraAktivitet("$nyttId", "NY " . $aktivitet);
+    if($svar->getStatus()===400 ) {
+    $retur .="<p class='ok'>uppdatera aktivitet till en redan befintlig misslyckades</p>";
+    }else{
+    $retur .="<p class='error'>uuppdatera aktivitet till en redan befintlig misslyckades<br>"
+    . "status:" . $svar->getStatus() . " returneras med följande innerhåll:<br>"
+    . print_r($svar->getContent(), true) ."</br>";
+    }
     } catch (Exception $ex) {
         $retur .= "<p class='error'>Något gick fel, meddelandet säger:<br> {$ex->getMessage()}</p>";
+    } finally {
+        //återställ databas
+        if ($db) {
+            $db->rollback();
+        }
+        
     }
 
     return $retur;

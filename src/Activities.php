@@ -100,7 +100,7 @@ function hamtaEnskildAktivitet(string $id): Response {
  */
 function sparaNyAktivitet(string $aktivitet): Response {
     // kontrollera indata - rensa bort onädiga tecken
-    $kontrolleraAktivitet=filter_var($aktivitet, FILTER_SANITIZE_ENCODED);
+    $kontrolleraAktivitet=filter_var($aktivitet, FILTER_SANITIZE_SPECIAL_CHARS);
     //kontrollera att aktiviteten inte är tom!
     if (trim($aktivitet)==='') {
         $retur = new stdClass();
@@ -141,6 +141,42 @@ try {
  * @return Response
  */
 function uppdateraAktivitet(string $id, string $aktivitet): Response {
+    // kontrollera indata
+    $kontrolleradId= filter_var($id, FILTER_VALIDATE_INT);
+    $kontrolleradAktivitet= filter_var($aktivitet, FILTER_SANITIZE_SPECIAL_CHARS);
+    $kontrolleradAktivitet=trim($kontrolleradAktivitet);
+
+    if($kontrolleradId===false || $kontrolleradId<1
+        || $kontrolleradAktivitet==='') {
+            $retur = new stdCLass();
+            $retur->error = ['Bad request', 'Felaktig indata till uppdatera aktivitet'];
+            return new Response($retur, 400);
+        }
+    try {
+    // koppla databas
+     $db = connectDb();
+    // förbereda fråga
+    $stmt=$db->prepare("UPDATE aktiviteter SET namn=:aktivitet WHERE id=:id");
+    $stmt->execute(['aktivitet'=>$kontrolleradAktivitet, 'id'=>$kontrolleradId]);
+
+    // Hantera svar
+    if($stmt->rowCount()===1) {
+        $retur=new stdClass();
+        $retur->result=true;
+        $retur->message=['uppdatera aktivitet lyckades', '1 rad uppdaterad'];
+        return new Response($retur);
+    }else{
+        $retur=new stdClass();
+        $retur->result=false;
+        $retur->message=['uppdatera aktivitet misslyckades'. 'ingen rad uppdaterad'];
+        return new Response($retur);
+    }
+    } catch (Exception $e) {
+        $retur= new stdClass();
+        $retur->error = ["Bad request", "Något gick fel vid databasanropet", $e -> getMessage()];
+          
+        return new Response($retur, 400);
+    }
 }
 
 /**

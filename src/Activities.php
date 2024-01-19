@@ -71,8 +71,40 @@ function hamtaEnskildAktivitet(string $id): Response {
  * @return Response
  */
 function sparaNyAktivitet(string $aktivitet): Response {
+    // kontrollera indata - rensa bort onädiga tecken
+    $kontrolleraAktivitet=filter_var($aktivitet, FILTER_SANITIZE_ENCODED);
+    //kontrollera att aktiviteten inte är tom!
+    if (trim($aktivitet)==='') {
+        $retur = new stdClass();
+        $retur->error=['Bad request', 'Något gick fel vid spara'];
+        return new Response($retur, 400);
+    }
+try {
+    // koppla mot databasen
+    $db= connectDb();
+
+    // Exekvera frågan
+    $stmt=$db->prepare("INSERT INTO aktiviteter (namn) values (:aktivitet)");
+    $svar=$stmt->execute(['aktivitet'=>$kontrolleraAktivitet]);
+
+    // Kontrollera svaret
+    if ($svar===true){
+        $retur=new stdClass();
+        $retur->id=$db->lastinsertId();
+        $retur->meddelande = ['spara luckades', 'I post lades till'];
+        return new Response($retur);
+    } else {
+        $retur=new stdClass();
+        $retur->error=['Bad request', 'Något gick fel vid spara'];
+        return new Response($retur, 400);
+    }
+} catch (Exception $e) {
+    $retur = new stdCLass();
+    $retur->error = ['Bad request', 'Fel vid spara', $e->getMessage()];
+    return new Response($retur, 400);
 }
 
+}
 /**
  * Uppdaterar angivet id med ny text
  * @param string $id Id för posten som ska uppdateras

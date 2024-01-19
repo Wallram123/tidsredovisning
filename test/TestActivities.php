@@ -34,7 +34,7 @@ function test_HamtaAllaAktiviteter(): string {
             $retur .= "<p class='error'>Hämta alla aktiviteter misslyckades<br>"
                     . $svar->getStatus() . " returnerades</p>";
         
-                    
+
     
         }
         $retur .= "<p class='error'>Inga tester implementerade</p>";
@@ -67,10 +67,49 @@ function test_HamtaEnAktivitet(): string {
 function test_SparaNyAktivitet(): string {
     $retur = "<h2>test_SparaNyAktivitet</h2>";
 
+    $nyAktivitet="Aktivitet" . time();
+
     try {
-        $retur .= "<p class='error'>Inga tester implementerade</p>";
+    //koppla databas
+    $db= connectDb();
+
+    //starta transaktion
+    $db->beginTransaction();
+
+    // spara tom aktivitet - misslyckat
+    $svar=SparaNyAktivitet('');
+    if($svar->getStatus()===400) {
+        $retur .="<p class='ok'>spara tom aktivitet misslyckades, som förväntat</p>";
+    } else {
+        $retur .="<p class='ok'>spara tom aktivitet misslyckades, status" . $svar->getStatus()
+                . "returnderades istället som förväntat 400</p>";
+    }
+    //spara ny aktivitet - lyckat
+    $svar= sparaNyAktivitet($nyAktivitet);
+    if($svar->getStatus()===200) {
+        $retur .="<p class='ok'>spara aktivitet lyckades</p>";
+    } else {
+        $retur .="<p class='ok'>spara tom aktivitet misslyckades, status" . $svar->getStatus()
+                . "returnderades istället som förväntat 200</p>";
+    }
+    //spara ny aktivitet - misslyckat
+    $svar= sparaNyAktivitet($nyAktivitet);
+    if($svar->getStatus()===400) {
+        $retur .="<p class='ok'>spara duplicerad aktivitet misslyckades, som förväntat</p>";
+    } else {
+        $retur .="<p class='ok'>spara tom aktivitet misslyckades, status" . $svar->getStatus()
+                . "returnderades istället som förväntat 400</p>";
+    }
+    // Återställa databasen
+
+    
     } catch (Exception $ex) {
         $retur .= "<p class='error'>Något gick fel, meddelandet säger:<br> {$ex->getMessage()}</p>";
+    } finally {
+    //återställa databasen
+        if($db) {
+            $db->rollback();
+        }
     }
 
     return $retur;

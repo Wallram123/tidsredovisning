@@ -185,9 +185,58 @@ function test_SparaUppgift(): string {
     $retur = "<h2>test_SparaUppgift</h2>";
 
     try {
-        $retur .= "<p class='error'>Inga tester implementerade</p>";
+        $db=connectDb();
+        //skapar transatction så slipper skräp i databasen
+        $db->beginTransaction();
+        //misslyckas med att spara pga saknad datum
+        $postdata=['time'=>'01:00'
+            , 'date'=>'2023-12-31',
+            'description'=>'Detta är en testpost'];
+
+        $svar= sparaNyUppgift($postdata);
+        if($svar->getStatus()===400) {
+        $retur .="<p class='ok'>Misslyckades med att spara post utan aktivitetid, som förväntat</p>";
+        }else{
+            $retur .="<p class='error'>Misslyckades med att spara post utan aktivitetid<br>"
+            . $svar->getStatus(). "returnerades istället för förväntat 400<br>"
+                    . print_r($svar->getContent(), true) . "</p>";
+        }
+        //lyckas met att spara post utan beskrivning
+
+        //Förebered data
+        $content= hamtaAllaAktiviteter()->getContent();
+        $aktiviteter=$content['activities'];
+        $aktivitetId=$aktiviteter[0]->id;
+        $postdata=['time'=>'01:00'
+        , 'date'=>'2023-12-31',
+        'activityId'=>"$aktivitetId"];
+
+        //testa
+        $svar= sparaNyUppgift($postdata);
+        if($svar->getStatus()===200) {
+            $retur .="<p class='ok'>Lyckades med att spara uppgift utan beskrivning</p>";
+        }else{
+            $retur .="<p class='error'>Misslyckades med att spara uppgift utan beskrivning<br>"
+                    . $svar->getStatus() . " returnerades istället för förväntat 200<br>"
+                    . print_r($svar->getContent(), true) . "</p>";
+        }
+        //lyckas spara post med alla uppgifter
+        $postdata['description']="Detta är en testpost";
+        $svar= sparaNyUppgift($postdata);
+        if($svar->getStatus()===200) {
+            $retur .="<p class='ok'>Lyckades med att spara uppgift med alla uppgifter</p>";
+        }else{
+            $retur .="<p class='error'>Misslyckades med att spara uppgift med alla uppgifter<br>"
+                    . $svar->getStatus() . " returnerades istället för förväntat 200<br>"
+                    . print_r($svar->getContent(), true) . "</p>";
+        }
+        
     } catch (Exception $ex) {
         $retur .= "<p class='error'>Något gick fel, meddelandet säger:<br> {$ex->getMessage()}</p>";
+    }finally{
+        if($db) {
+            $db->rollback();
+        }
     }
 
     return $retur;

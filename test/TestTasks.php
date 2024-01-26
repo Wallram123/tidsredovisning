@@ -169,9 +169,81 @@ function test_HamtaEnUppgift(): string {
     $retur = "<h2>test_HamtaEnUppgift</h2>";
 
     try {
-        $retur .= "<p class='error'>Inga tester implementerade</p>";
+        // misslyckas med att hämta id=0
+        $svar=hamtaEnSkildUppgift("0");
+        if($svar->getStatus()===400) {
+            $retur .="<p class='ok'>Misslyckades hämta uppgift med id=0, som förväntat</p>";
+        }else{
+            $retur .="<p class='error'>misslyckades med att hämta uppgift med id=0<br>"
+                    . $svar->getStatus() . "returnerades istället för förväntat 400<br>"
+                    . print_r($svar->getContent(), true) ."</p>";
+        }
+        //misslyckas med att hämta id=sju
+        $svar=hamtaEnSkildUppgift("sju");
+        if($svar->getStatus()===400) {
+            $retur .="<p class='ok'>Misslyckades hämta uppgift med id=sju, som förväntat</p>";
+        }else{
+            $retur .="<p class='error'>misslyckades med att hämta uppgift med id=sju<br>"
+                    . $svar->getStatus() . "returnerades istället för förväntat 400<br>"
+                    . print_r($svar->getContent(), true) ."</p>";
+        }
+        //misslyckas med att hämta id=3.14
+        $svar=hamtaEnSkildUppgift("3.14");
+        if($svar->getStatus()===400) {
+            $retur .="<p class='ok'>Misslyckades hämta uppgift med id=3.14, som förväntat</p>";
+        }else{
+            $retur .="<p class='error'>misslyckades med att hämta uppgift med id=3.14<br>"
+                    . $svar->getStatus() . "returnerades istället för förväntat 400<br>"
+                    . print_r($svar->getContent(), true) ."</p>";
+        }
+        /*
+        *   lyckas hämta id som finns
+        */
+        
+        //koppla databas - skapa transaktion
+        $db=connectDb();
+        $db->beginTransaction();
+
+          //Förebered data
+          $content= hamtaAllaAktiviteter()->getContent();
+          $aktiviteter=$content['activities'];
+          $aktivitetId=$aktiviteter[0]->id;
+          $postdata=["date"=>date('Y-m-d'),
+          "time"=>"01:00",
+          "description"=>"Testpost",
+          "activityId"=> "$aktivitetId" ];
+        //skapa post
+        
+        $svar= sparaNyUppgift($postdata);
+        $taskId=$svar->getContent()->id;
+
+        //hämta nyss skapad post
+        $svar= hamtaEnskildUppgift("$taskId");
+        if($svar->getStatus()===200) {
+            $retur .="<p class='ok'>Lyckades hämta en uppgift</p>";
+        }else{
+            $retur .="<p class='error'>misslyckades hämta nyskapa uppgift<br>"
+            . $svar->getStatus() . "returnerades istället för förväntat 200<br>"
+            . print_r($svar->getContent(), true) ."</p>";
+        }
+        //misslyckas med att hämta id som inte finns
+        $taskId++;
+        $svar= hamtaEnskildUppgift("$taskId");
+        if($svar->getStatus()===400) {
+            $retur .="<p class='ok'>misslyckades hämta en uppgift som inte finns</p>";
+        }else{
+            $retur .="<p class='error'>misslyckades hämta uppgift som inte fanns<br>"
+            . $svar->getStatus() . "returnerades istället för förväntat 400<br>"
+            . print_r($svar->getContent(), true) ."</p>";
+        }
+
     } catch (Exception $ex) {
         $retur .= "<p class='error'>Något gick fel, meddelandet säger:<br> {$ex->getMessage()}</p>";
+    }finally{
+        if($db) {
+            $db->rollback();
+
+        }
     }
 
     return $retur;
@@ -189,8 +261,8 @@ function test_SparaUppgift(): string {
         //skapar transatction så slipper skräp i databasen
         $db->beginTransaction();
         //misslyckas med att spara pga saknad datum
-        $postdata=['time'=>'01:00'
-            , 'date'=>'2023-12-31',
+        $postdata=['time'=>'01:00',
+            'date'=>'2023-12-31',
             'description'=>'Detta är en testpost'];
 
         $svar= sparaNyUppgift($postdata);
@@ -207,10 +279,9 @@ function test_SparaUppgift(): string {
         $content= hamtaAllaAktiviteter()->getContent();
         $aktiviteter=$content['activities'];
         $aktivitetId=$aktiviteter[0]->id;
-        $postdata=['time'=>'01:00'
-        , 'date'=>'2023-12-31',
+        $postdata=['time'=>'01:00',
+        'date'=>'2023-12-31',
         'activityId'=>"$aktivitetId"];
-
         //testa
         $svar= sparaNyUppgift($postdata);
         if($svar->getStatus()===200) {
@@ -230,7 +301,6 @@ function test_SparaUppgift(): string {
                     . $svar->getStatus() . " returnerades istället för förväntat 200<br>"
                     . print_r($svar->getContent(), true) . "</p>";
         }
-        
     } catch (Exception $ex) {
         $retur .= "<p class='error'>Något gick fel, meddelandet säger:<br> {$ex->getMessage()}</p>";
     }finally{
@@ -262,6 +332,33 @@ function test_KontrolleraIndata(): string {
     $retur = "<h2>test_KontrolleraIndata</h2>";
 
     try {
+        $postdata = ["date"=>"I föregår"];
+        $svar= KontrolleraIndata($postdata);
+        if(in_array("Ogiltigt angivet datum", $svar)) {
+            $retur .="<p class='ok'>Returnderade ogiltigt datum som förväntat</p>";
+        }else{
+            $retur .="<p class='error'>Misslyckades med att spara ogiltigt datum <br>"
+                    . print_r($svar, true) . "returnera istället</p>";
+        }
+
+        $postdata = ["date"=>"2024-01-40"];
+        $svar= KontrolleraIndata($postdata);
+        if(in_array("Felaktigt formaterat datum", $svar)) {
+            $retur .="<p class='ok'>Returnderade ogiltigt format som förväntat</p>";
+        }else{
+            $retur .="<p class='error'>Misslyckades med att spara oglitigt format<br>"
+                    . print_r($svar, true) . "returnera istället</p>";
+        }
+
+        $postdata = ["date"=>"2024-01-40"];
+        $svar= KontrolleraIndata($postdata);
+        if(in_array("Datum får inte vara framåt i tiden", $svar)) {
+            $retur .="<p class='ok'>Returnderade ogiltigt format som förväntat</p>";
+        }else{
+            $retur .="<p class='error'>Misslyckades med att spara oglitigt format<br>"
+                    . print_r($svar, true) . "returnera istället</p>";
+        }
+
         $retur .= "<p class='error'>Inga tester implementerade</p>";
     } catch (Exception $ex) {
         $retur .= "<p class='error'>Något gick fel, meddelandet säger:<br> {$ex->getMessage()}</p>";

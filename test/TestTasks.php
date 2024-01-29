@@ -418,6 +418,29 @@ function test_KontrolleraIndata(): string {
     $retur = "<h2>test_KontrolleraIndata</h2>";
 
     try {
+        //testa alla saknas
+        $postdata=[];
+        $svar= KontrolleraIndata($postdata);
+        if(count($svar)===3) {
+            $retur .="<p class='ok'>test alla element saknas lyckades</p>";
+        }else{
+            $retur .="<p class='error'>test alla element saknas Misslyckades<br>"
+                    .count($svar) ." felmeddelanden rapporterades istället för förväntad 3<br>"
+                    . print_r($svar, true) . "returnera istället</p>";
+        }
+
+        //test  att datum finns
+
+        $postdata=["date"=>('Y-m-d')];
+        $svar= KontrolleraIndata($postdata);
+        if(count($svar)===2) {
+            $retur .="<p class='ok'>test alla datum finns lyckades</p>";
+        }else{
+            $retur .="<p class='error'>test alla datum finns Misslyckades<br>"
+                    .count($svar) ." felmeddelanden rapporterades istället för förväntad 3<br>"
+                    . print_r($svar, true) . "returnera istället</p>";
+        }
+        //kontrollera ogiltigt datum
         $postdata = ["date"=>"I föregår"];
         $svar= KontrolleraIndata($postdata);
         if(in_array("Ogiltigt angivet datum", $svar)) {
@@ -426,7 +449,7 @@ function test_KontrolleraIndata(): string {
             $retur .="<p class='error'>Misslyckades med att spara ogiltigt datum <br>"
                     . print_r($svar, true) . "returnera istället</p>";
         }
-
+        //kontrollera falktigt fomraterat datum
         $postdata = ["date"=>"2024-01-40"];
         $svar= KontrolleraIndata($postdata);
         if(in_array("Felaktigt formaterat datum", $svar)) {
@@ -435,16 +458,45 @@ function test_KontrolleraIndata(): string {
             $retur .="<p class='error'>Misslyckades med att spara oglitigt format<br>"
                     . print_r($svar, true) . "returnera istället</p>";
         }
-
+        //kontrollera datum får inte vara framåt i tiden
         $postdata = ["date"=>"2024-01-40"];
         $svar= KontrolleraIndata($postdata);
         if(in_array("Datum får inte vara framåt i tiden", $svar)) {
-            $retur .="<p class='ok'>Returnderade ogiltigt format som förväntat</p>";
+            $retur .="<p class='ok'>Returnderade Datum får inte vara framåt i tiden  som förväntat</p>";
         }else{
             $retur .="<p class='error'>Misslyckades med att spara oglitigt format<br>"
                     . print_r($svar, true) . "returnera istället</p>";
         }
+        //kontrollera ogiltig angiven tid
+        $postdata = ["time"=>"2023-01-20"];
+        $svar= KontrolleraIndata($postdata);
+        if(in_array("ogiltig angiven tid", $svar)) {
+            $retur .="<p class='ok'>Returnderade ogiltig angiven tid som förväntat</p>";
+        }else{
+            $retur .="<p class='error'>Misslyckades med att spara ogiltig angiven tid<br>"
+                    . print_r($svar, true) . "returnera istället</p>";
+        }
 
+        //kontrollera Felaktig angiven tid
+        $postdata = ["time"=>"25:30"];
+        $svar= KontrolleraIndata($postdata);
+        if(in_array("Felaktig angiven tid", $svar)) {
+            $retur .="<p class='ok'>Returnderade Felaktig angiven tid som förväntat</p>";
+        }else{
+            $retur .="<p class='error'>Misslyckades med att spara Felaktig angiven tid<br>"
+                    . print_r($svar, true) . "returnera istället</p>";
+        }
+
+        //kontrollerat Du får inte rapportera mer än 8 timmar per aktivitet åt gången
+        $postdata = ["time"=>"09:00"];
+        $svar= KontrolleraIndata($postdata);
+        if(in_array("Du får inte rapportera mer än 8 timmar per aktivitet åt gången", $svar)) {
+            $retur .="<p class='ok'>Returnderade rapportera mer än 8 timmar per aktivitet åt gången som förväntat</p>";
+        }else{
+            $retur .="<p class='error'>Misslyckades med att spara rapporter mer än 8 timmar per aktivitet åt gången<br>"
+                    . print_r($svar, true) . "returnera istället</p>";
+        }
+        
         $retur .= "<p class='error'>Inga tester implementerade</p>";
     } catch (Exception $ex) {
         $retur .= "<p class='error'>Något gick fel, meddelandet säger:<br> {$ex->getMessage()}</p>";

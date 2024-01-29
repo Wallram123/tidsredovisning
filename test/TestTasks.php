@@ -320,9 +320,95 @@ function test_UppdateraUppgifter(): string {
     $retur = "<h2>test_UppdateraUppgifter</h2>";
 
     try {
-        $retur .= "<p class='error'>Inga tester implementerade</p>";
+        //koppla databas och skapa transaktion
+        $db=connectDb();
+        $db->beginTransaction();
+
+        //hämta postdata
+        $svar=hamtaSida("1");
+        if($svar->getStatus()!=200) {
+            throw new Exception('kunde inte hämta poster för test av Uppdatera uppgift');
+        }
+        $aktiviteter=$svar->getContent()->tasks;
+        //misslyckas med igoltigt id=0
+        $postdata=get_object_vars($aktiviteter[0]);
+        $svar=uppdaterauppgift('0', $postdata);
+        if($svar->getStatus()===400) {
+            $retur .="<p class='ok'>Misslyckades hämta uppgift med id=0, som förväntat</p>";
+        }else{
+            $retur .="<p class='error'>misslyckades med att hämta uppgift med id=0<br>"
+                    . $svar->getStatus() . "returnerades istället för förväntat 400<br>"
+                    . print_r($svar->getContent(), true) ."</p>";
+        }
+
+        //misslyckas med igoltigt id=sju
+        $svar=uppdaterauppgift('sju', $postdata);
+        if($svar->getStatus()===400) {
+            $retur .="<p class='ok'>Misslyckades hämta uppgift med id=sju, som förväntat</p>";
+        }else{
+            $retur .="<p class='error'>misslyckades med att hämta uppgift med id=sju<br>"
+                    . $svar->getStatus() . "returnerades istället för förväntat 400<br>"
+                    . print_r($svar->getContent(), true) ."</p>";
+        }
+
+        //misslyckas med igoltigt id=3.14
+        $svar=uppdaterauppgift('3.14', $postdata);
+        if($svar->getStatus()===400) {
+            $retur .="<p class='ok'>Misslyckades hämta uppgift med id=3.14, som förväntat</p>";
+        }else{
+            $retur .="<p class='error'>misslyckades med att hämta uppgift med id=3.14<br>"
+                    . $svar->getStatus() . "returnerades istället för förväntat 400<br>"
+                    . print_r($svar->getContent(), true) ."</p>";
+        }
+        //lyckas med id som finns
+        $id=$postdata['id'];
+        $postdata['activityId']=(string)   $postdata['activityId'];
+        $postdata['description'] =$postdata['description'] . "(Uppdaterad)";
+        $svar= uppdateraUppgift("$id", $postdata);
+        if($svar->getStatus()===200 && $svar->getContent()->result===true) {
+            $retur .="<p class='ok'>uppdatera uppgift lyckades, som förväntat</p>";
+        }else{
+            $retur .="<p class='error'>uppdatera uppgift lyckades<br>"
+                    . $svar->getStatus() . "returnerades istället för förväntat 200<br>"
+                    . print_r($svar->getContent(), true) ."</p>";
+        }
+        //misslyckas med samma data
+        $svar= uppdateraUppgift("$id", $postdata);
+        if($svar->getStatus()===200 && $svar->getContent()->result===false) {
+            $retur .="<p class='ok'>uppdatera uppgift misslyckades, som förväntat</p>";
+        }else{
+            $retur .="<p class='error'>uppdatera uppgift misslyckades<br>"
+                    . $svar->getStatus() . "returnerades istället för förväntat 200<br>"
+                    . print_r($svar->getContent(), true) ."</p>";
+        }        
+        //misslyckas med felaktig indata
+        $postdata['time']='09:70';
+        $svar=uppdateraUppgift("id", $postdata);
+        if($svar->getStatus()===400) {
+            $retur .="<p class='ok'>misslyckades med att uppdatera post med felaktig indata, som förväntat</p>";
+        }else{
+            $retur .="<p class='error'>uppdatera uppgift med felaktig indata misslyckades<br>"
+                    . $svar->getStatus() . "returnerades istället för förväntat 200<br>"
+                    . print_r($svar->getContent(), true) ."</p>";
+        } 
+        //lyckas med saknad beskrivning
+        $postdata['time']='01:30';
+        unset($postdata['description']);
+        $svar= uppdaterauppgift("$id", $postdata);
+        if ($svar->getStatus()===200) {
+            $retur .="<p class='ok'>uppdatera post saknad description lyckades, som förväntat</p>";
+        }else{
+            $retur .="<p class='error'>uppdatera uppgift med utan descriptionmisslyckades<br>"
+                    . $svar->getStatus() . "returnerades istället för förväntat 200<br>"
+                    . print_r($svar->getContent(), true) ."</p>";
+        } 
+
     } catch (Exception $ex) {
         $retur .= "<p class='error'>Något gick fel, meddelandet säger:<br> {$ex->getMessage()}</p>";
+    }finally {
+        if($db) {
+            $db->rollback();
+        }
     }
 
     return $retur;
